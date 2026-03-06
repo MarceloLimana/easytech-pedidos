@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sushi In House</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root { --sushi-red: #dc3545; --sushi-black: #0a0a0a; --sushi-card: #1a1a1a; }
+        body { background-color: var(--sushi-black); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding-bottom: 120px; }
+        .header-sushi { position: sticky; top: 0; z-index: 1000; background: var(--sushi-black); border-bottom: 2px solid #222; }
+        .nav-scroll { display: flex; overflow-x: auto; white-space: nowrap; padding: 12px 10px; gap: 10px; scrollbar-width: none; }
+        .cat-item { color: #888; text-decoration: none; padding: 6px 18px; border-radius: 25px; background: #1a1a1a; font-size: 0.85rem; font-weight: bold; border: 1px solid #333; }
+        .cat-item.active { background: var(--sushi-red); color: white; border-color: var(--sushi-red); }
+        .section-header { padding-top: 100px; margin-top: -60px; margin-bottom: 15px; color: var(--sushi-red); font-weight: 800; text-transform: uppercase; }
+        .card-sushi { background: var(--sushi-card); border: none; border-radius: 15px; overflow: hidden; height: 100%; }
+        .product-name { color: #f8f9fa !important; font-weight: 600; font-size: 0.9rem; margin-top: 8px; margin-bottom: 4px; display: block; }
+        .img-box { width: 100%; height: 130px; object-fit: cover; background: #252525; }
+        .btn-add { background: var(--sushi-red); color: white; border: none; border-radius: 8px; width: 100%; font-weight: bold; padding: 10px; font-size: 0.8rem; }
+        .qty-controls { display: flex; justify-content: space-between; align-items: center; background: #333; border-radius: 8px; overflow: hidden; }
+        .qty-btn { background: #444; color: white; border: none; padding: 10px 15px; font-weight: bold; }
+        .qty-number { color: #ffffff !important; font-weight: 800; font-size: 1rem; }
+        .cart-footer { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--sushi-red); color: white; padding: 16px 20px; border-radius: 15px; display: none; justify-content: space-between; align-items: center; font-weight: bold; z-index: 1010; border: none; }
+        .modal-content { background: #1a1a1a; color: white; border: 1px solid #333; border-radius: 20px; }
+        .form-control, .form-select { background-color: #2a2a2a !important; border: 1px solid #444 !important; color: #ffffff !important; padding: 12px; }
+        .resumo-pedido { background: #252525; border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px dashed #444; }
+        .item-checkout { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 5px; color: #ccc; }
+        .item-frete { border-top: 1px solid #444; padding-top: 8px; margin-top: 8px; color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="header-sushi">
+        <div class="text-center pt-3 pb-1"><h6 class="m-0 fw-bold">🍣 SUSHI IN HOUSE</h6></div>
+        <div class="nav-scroll" id="nav-lista"></div>
+    </div>
+    <div class="container mt-4" id="conteudo-cardapio">
+        <div class="text-center py-5"><div class="spinner-border text-danger"></div></div>
+    </div>
+    <button class="cart-footer" id="btn-carrinho" data-bs-toggle="modal" data-bs-target="#modalCadastro">
+        <span><i class="bi bi-cart3 me-2"></i> <span id="cart-qty">0</span> ITENS</span>
+        <span id="cart-val">R$ 0,00</span>
+    </button>
+    <div class="modal fade" id="modalCadastro" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold">Finalizar Pedido</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="mb-3">
+                        <label class="small text-secondary mb-1">WhatsApp (com DDD)</label>
+                        <input type="tel" id="cli-whatsapp" class="form-control" placeholder="Ex: 93991817863" oninput="if(this.value.replace(/\D/g,'').length >= 11) verificarCliente(this.value)">
+                    </div>
+                    <div class="mb-3"><label class="small text-secondary mb-1">Nome Completo</label><input type="text" id="cli-nome" class="form-control"></div>
+                    <div class="mb-3"><label class="small text-secondary mb-1">Endereço e Nº</label><input type="text" id="cli-endereco" class="form-control"></div>
+                    <div class="mb-3">
+                        <label class="small text-secondary mb-1">Bairro</label>
+                        <select id="cli-bairro" class="form-select" onchange="renderCart()"><option value="">Carregando...</option></select>
+                    </div>
+                    <div class="resumo-pedido">
+                        <div id="lista-itens-checkout"></div>
+                        <div class="item-checkout item-frete" id="res-frete-linha" style="display:none;">
+                            <span>Taxa de Entrega:</span> <span id="res-frete-val">R$ 0,00</span>
+                        </div>
+                        <div class="item-checkout fw-bold text-white fs-5 mt-2">
+                            <span>Total:</span> <span id="res-total">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3">
+                    <button type="button" id="btn-finalizar" class="btn btn-danger w-100 fw-bold py-3 fs-5" onclick="processarPedido()">CONFIRMAR E PAGAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const TOKEN = 'gLA4J5abVF9jUTk6iQFbEGWOF5tIBuuUL9RWa95W';
+        const BASE = 'https://db.easytech.app.br/api/v1/db/data/v1/pv22yt2mpr93l2h';
+        const WEBHOOK_N8N = 'https://n8n.easytech.app.br/webhook-test/Sushi'; // <--- INSIRA AQUI A URL DO SEU WEBHOOK N8N
+        const T_CAT = 'mz6wj3d02rcdbk2', T_PROD = 'muv3be17c6nvel4', T_BAIRRO = 'm7k4wpz2nb5x73y', T_CLIENTE = 'mha0unrbhyxsb82';
+
+        let carrinho = {}, idClienteEncontrado = null, totalFinal = 0, freteValor = 0;
+
+        async function carregar() {
+            try {
+                const headers = { 'xc-token': TOKEN };
+                const resB = await fetch(`${BASE}/${T_BAIRRO}?limit=100`, { headers });
+                const dB = await resB.json();
+                const selectB = document.getElementById('cli-bairro');
+                if(dB.list) {
+                    selectB.innerHTML = '<option value="">Selecione...</option>';
+                    dB.list.forEach(b => {
+                        selectB.innerHTML += `<option value="${b.Id}" data-nome="${b.Nome}" data-frete="${b.Frete}">${b.Nome} (+ R$ ${parseFloat(b.Frete).toFixed(2)})</option>`;
+                    });
+                }
+                const [rC, rP] = await Promise.all([
+                    fetch(`${BASE}/${T_CAT}?limit=100`, { headers }),
+                    fetch(`${BASE}/${T_PROD}?limit=100`, { headers })
+                ]);
+                renderizarSite(await rC.json(), await rP.json());
+            } catch (e) { console.error(e); }
+        }
+
+        async function verificarCliente(val) {
+            const num = val.replace(/\D/g,'');
+            const res = await fetch(`${BASE}/${T_CLIENTE}?where=(WhatsApp,like,%${num}%)`, { headers: {'xc-token': TOKEN} });
+            const data = await res.json();
+            if(data.list && data.list.length > 0) {
+                const c = data.list[0]; idClienteEncontrado = c.Id;
+                document.getElementById('cli-nome').value = c.Nome_Completo || '';
+                document.getElementById('cli-endereco').value = c.Endereco || '';
+                if(c.Bairro) { document.getElementById('cli-bairro').value = c.Bairro; renderCart(); }
+            }
+        }
+
+        async function processarPedido() {
+            const btn = document.getElementById('btn-finalizar');
+            const selB = document.getElementById('cli-bairro');
+            const dados = {
+                nome: document.getElementById('cli-nome').value,
+                whatsapp: document.getElementById('cli-whatsapp').value.replace(/\D/g,''),
+idCliente: idClienteEncontrado,
+                endereco: document.getElementById('cli-endereco').value,
+                bairro: selB.options[selB.selectedIndex]?.text,
+Taxa_Entrega: freteValor,
+                total: totalFinal,
+                itens: Object.values(carrinho).map(i => ({ nome: i.nome, preco: i.preco, qtd: i.qtd }))
+            };
+
+            if(!dados.whatsapp || !dados.nome || !dados.endereco || !selB.value) return alert("Preencha todos os campos!");
+
+            btn.disabled = true; btn.innerHTML = "PROCESSANDO...";
+
+            try {
+                const response = await fetch(WEBHOOK_N8N, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+                const result = await response.json();
+                if(result.link_pagamento) 
+{ 
+// Limpa possíveis caracteres extras e garante que o navegador entenda como link externo
+    let urlFinal = result.link_pagamento.trim();
+    
+    // Remove um "=" caso ele venha no início da string por erro de concatenação
+    if (urlFinal.startsWith('=')) {
+        urlFinal = urlFinal.substring(1);
+    }
+
+    // Redireciona de forma limpa
+    window.location.replace(urlFinal);
+}
+                else { throw new Error("Link não encontrado na resposta"); }
+            } catch (e) {
+                alert("Erro ao gerar pagamento. Tente novamente.");
+                btn.disabled = false; btn.innerHTML = "CONFIRMAR E PAGAR";
+            }
+        }
+
+        function renderizarSite(cats, prods) {
+            const menu = document.getElementById('conteudo-cardapio');
+            const nav = document.getElementById('nav-lista');
+            menu.innerHTML = ''; nav.innerHTML = '';
+            cats.list.sort((a,b) => a.Id - b.Id).forEach(cat => {
+                const filtrados = prods.list.filter(p => Number(p.Categoria) === Number(cat.Id));
+                if (filtrados.length > 0) {
+                    const idSecao = `sec-${cat.Id}`;
+                    nav.innerHTML += `<a href="#${idSecao}" class="cat-item" onclick="selectCat(this)">${cat.Nome}</a>`;
+                    let grid = `<div id="${idSecao}" class="section-header">${cat.Nome}</div><div class="row g-3">`;
+                    filtrados.forEach(p => {
+                        const v = parseFloat(p.Preco) || 0;
+                        grid += `<div class="col-6 col-md-4"><div class="card card-sushi p-2">
+                            <img src="${p.Imagem}" class="img-box rounded" onerror="this.src='https://placehold.co/300x130/222/555?text=Sushi'">
+                            <span class="product-name">${p.Nome}</span>
+                            <div class="text-danger fw-bold mb-2">R$ ${v.toFixed(2).replace('.', ',')}</div>
+                            <div id="btn-container-${p.Id}"><button class="btn-add" onclick="updateQty('${p.Id}', 1, '${p.Nome}', ${v})">ADICIONAR</button></div>
+                        </div></div>`;
+                    });
+                    menu.innerHTML += grid + '</div>';
+                }
+            });
+        }
+
+        function updateQty(id, delta, nome, preco) {
+            if (!carrinho[id]) carrinho[id] = { nome, preco, qtd: 0 };
+            carrinho[id].qtd += delta;
+            const container = document.getElementById(`btn-container-${id}`);
+            if (carrinho[id].qtd > 0) {
+                container.innerHTML = `<div class="qty-controls"><button class="qty-btn" onclick="updateQty('${id}', -1, '${nome}', ${preco})">-</button><span class="qty-number">${carrinho[id].qtd}</span><button class="qty-btn" onclick="updateQty('${id}', 1, '${nome}', ${preco})">+</button></div>`;
+            } else {
+                delete carrinho[id];
+                container.innerHTML = `<button class="btn-add" onclick="updateQty('${id}', 1, '${nome}', ${preco})">ADICIONAR</button>`;
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            let sub = 0, count = 0, html = "";
+            for (let id in carrinho) {
+                count += carrinho[id].qtd; sub += carrinho[id].qtd * carrinho[id].preco;
+                html += `<div class="item-checkout"><span>${carrinho[id].qtd}x ${carrinho[id].nome}</span><span>R$ ${(carrinho[id].qtd * carrinho[id].preco).toFixed(2)}</span></div>`;
+            }
+            const selB = document.getElementById('cli-bairro');
+            const frete = parseFloat(selB.options[selB.selectedIndex]?.dataset.frete || 0);
+            totalFinal = sub + frete;
+            document.getElementById('cart-qty').innerText = count;
+            document.getElementById('cart-val').innerText = 'R$ ' + sub.toFixed(2).replace('.', ',');
+            document.getElementById('btn-carrinho').style.display = count > 0 ? 'flex' : 'none';
+            document.getElementById('lista-itens-checkout').innerHTML = html;
+            const linhaFrete = document.getElementById('res-frete-linha');
+            if (frete > 0) {
+                linhaFrete.style.display = 'flex';
+                document.getElementById('res-frete-val').innerText = 'R$ ' + frete.toFixed(2).replace('.', ',');
+            } else { linhaFrete.style.display = 'none'; }
+            document.getElementById('res-total').innerText = 'R$ ' + totalFinal.toFixed(2).replace('.', ',');
+        }
+
+        function selectCat(el) {
+            document.querySelectorAll('.cat-item').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
+        carregar();
+    </script>
+</body>
+</html>
